@@ -11,35 +11,43 @@ import (
 
 type Bot struct {
 	EstadosConversacion map[int]int
+	nodoMensajes        *xmlquery.Node
 }
 
 func CrearBot() *Bot {
+	_, err := os.Stat("mensajesAutomaticos.xml")
+	if os.IsNotExist(err) {
+		data := Mensajes{
+			Mensajes: []Mensaje{},
+		}
+		crearXML(data)
+	}
+
+	xmlFile, _ := os.Open("mensajesAutomaticos.xml")
+	doc, err := xmlquery.Parse(xmlFile)
+	if err != nil {
+		log.Fatal("Error parseando el documento XML:", err)
+	}
 	contestadora := &Bot{
 		EstadosConversacion: make(map[int]int),
+		nodoMensajes:        doc,
 	}
-	// // Crear estructura base de mensajes
-	// data := Mensajes{
-	// 	Mensajes: []Mensaje{},
-	// }
-	// escribirXML(data)
+
 	return contestadora
 }
 
 func (b *Bot) contestar(mensaje string, id_conversacion int) {
 	_, ok := b.EstadosConversacion[id_conversacion]
-	xmlFile, err := os.Open("mensajesAutomaticos.xml")
-	doc, err := xmlquery.Parse(xmlFile)
-	if err != nil {
-		log.Fatal("Error parseando el documento XML:", err)
-	}
-	query := "//mensaje[id=0]/cuerpo"
-	result := xmlquery.FindOne(doc, query)
-
 	if !ok {
 		b.EstadosConversacion[id_conversacion] = 0
-		str := result.InnerText()
-		println(str)
+
 	}
+	query := fmt.Sprintf("//mensaje[id=%s]/cuerpo", fmt.Sprint(b.EstadosConversacion[id_conversacion]))
+	result := xmlquery.FindOne(b.nodoMensajes, query)
+	str := result.InnerText()
+	println(str)
+
+	b.EstadosConversacion[id_conversacion] = 1
 }
 
 // Mensaje representa la estructura de un mensaje
@@ -55,7 +63,7 @@ type Mensajes struct {
 	Mensajes []Mensaje `xml:"mensaje"`
 }
 
-func escribirXML(mensajes Mensajes) error {
+func crearXML(mensajes Mensajes) error {
 
 	xmlFile, err := os.Create("mensajesAutomaticos.xml")
 	if err != nil {
@@ -93,17 +101,21 @@ func AniadirMensaje(contenido string, idEstadio int) {
 	nuevoMensaje := Mensaje{ID_Estadio: idEstadio, Cuerpo: contenido}
 	mensajes.Mensajes = append(mensajes.Mensajes, nuevoMensaje)
 
-	// Guardar la estructura actualizada en el archivo XML
-	err = escribirXML(mensajes)
 }
 
 func main() {
-	b := CrearBot()
-	b.contestar("hola", 0)
-	// AniadirMensaje("asdfasdfasdf", 3)
-	// AniadirMensaje("asdfasdfasdf", 3)
-	// AniadirMensaje("asdfasdfasdf", 3)
-	// AniadirMensaje("asdfasdfasdf", 3)
-	// AniadirMensaje("asdfasdfasdf", 3)
-	// AniadirMensaje("asdfasdfasdf", 3)
+	// b := CrearBot()
+	// b.contestar("hola", 0)
+	// b.contestar("hola", 0)
+
+	xmlFile, _ := os.Open("prueba.xml")
+	doc, err := xmlquery.Parse(xmlFile)
+	if err != nil {
+		log.Fatal("Error parseando el documento XML:", err)
+	}
+	query := "/musica/musicos/musico[(@id = /musica/bandas/banda/fechas[not(@disolucion)]/../integrantes/integrante/@id)]"
+	result := xmlquery.FindOne(doc, query)
+	// result = result.FirstChild
+	fmt.Println(result.InnerText())
+
 }
