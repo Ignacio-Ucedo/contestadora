@@ -4,3 +4,5 @@ ToDo
 *.xopp
 *.jpg
 *.json
+*.md
+interfaz.py
