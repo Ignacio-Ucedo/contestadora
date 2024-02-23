@@ -39,6 +39,9 @@ class Bot:
             self._cargar_archivo_mensajes()
             self._cargar_interacciones()
 
+            #conexión a interfaz de prueba:
+            # self.interfaz = interfaz_de_prueba
+
             self._configurar_bot()
         except Exception as e:
             self.registrador.error(f"Error al inicializar el bot: {str(e)}")
@@ -135,7 +138,7 @@ class Bot:
         if id == None or id == self.cantidad_mensajes:
             "mensaje nuevo"
             mensaje = ET.SubElement(self.mensajes.find("contenidos"), "mensaje")
-            mensaje.set("id", str(self.cantidad_mensajes))
+            mensaje.set("id_mensaje", str(self.cantidad_mensajes))
             self.cantidad_mensajes += 1
         else:
             "mensaje existente"
@@ -182,34 +185,54 @@ class Bot:
 
     def contestar(self, mensaje, usuario_id):
         
+        mensaje_enviado=False
+        #se envía saludo si tiene
         if usuario_id not in self.interacciones:        
             if self.saludo_id:
-                self.enviar_mensaje(self.saludo_id, usuario_id)
+                self._enviar_mensaje(self.saludo_id, usuario_id)
                 self.interacciones[usuario_id] = self.saludo_id
                 self.contestar(mensaje, usuario_id)
+                return
         #tiene globales 
         elif hasattr(self, 'mensajes_con_global') and self.globales_activados:
             for mensaje_con_global in self.mensajes_con_global:
-                disparadores = mensaje_con_global.findall('./disparador[@entorno="global"]')
-                for disparador in disparadores:
+                disparadores_globales_del_mensaje = mensaje_con_global.findall('./disparador[@entorno="global"]')
+                for disparador in disparadores_globales_del_mensaje:
                     condicion= disparador.get('condicion')
-                    texto= disparador.text
+                    disparador_texto= disparador.text
 
                     id_mensaje = mensaje_con_global.get('id_mensaje')
+                    #si tiene el atributo:
+
                     if condicion == "contiene":
-                        if mensaje.lower() in texto.lower():
-                            self.enviar_mensaje(id_mensaje)                                          
+                        if disparador_texto.lower() in mensaje.lower():
+                            self._enviar_mensaje(id_mensaje)                                          
+                            print(mensaje_con_global.attrib)
+                            if "globales_activados" in mensaje_con_global.attrib:
+                                self.globales_activados = not self.globales_activados
                             self.interacciones[usuario_id] = id_mensaje
+                            mensaje_enviado = True
+                            return
                     else:
-                        if mensaje == texto:
-                            self.enviar_mensaje(id_mensaje)
+                        if mensaje == disparador_texto:
+                            self._enviar_mensaje(id_mensaje)
+
                             self.interacciones[usuario_id] = id_mensaje
-        #no tiene globales
-        else:
-            self.interacciones[usuario_id] = self.mensaje_principal_id
-            self.enviar_mensaje(self.mensaje_principal_id, usuario_id)
+                            mensaje_enviado = True
+                            return
+       
+        #si no tiene globales o están desactivados o no encontró mensaje para enviar
+        if not mensaje_enviado:
+            #si es su primer mensaje (sin contar el saludo)
+            if  (hasattr(self, "saludo_id") and self.saludo_id == self.interacciones[usuario_id]) or (usuario_id not in self.interacciones):
+                self.interacciones[usuario_id] = self.mensaje_principal_id
+                self._enviar_mensaje(self.mensaje_principal_id, usuario_id)
+                if "globales_activados" in mensaje_con_global.attrib:
+                    self.globales_activados = not self.globales_activados
+                return
+
             ultimo_mensaje_id= self.interacciones[usuario_id]
-            id_hijos = self.mensajes.find(f'.//mensaje[@id="{ultimo_mensaje_id}"]').get("hijos")
+            id_hijos = self.mensajes.find(f'.//contenidos/mensaje[@id_mensaje="{ultimo_mensaje_id}"]').get("hijos")
             if id_hijos != None:
                 id_hijos = json.loads(id_hijos)
 
@@ -219,14 +242,55 @@ class Bot:
                         disparador = disparador.text
                         if disparador == mensaje:
                             self.interacciones[usuario_id] = id_hijo 
-                            self.enviar_mensaje(id_hijo, usuario_id)
+                            self._enviar_mensaje(id_hijo, usuario_id)
+  
                             break
             else:
                 "chequear excepción?"
                 self.interacciones[usuario_id]
 
-    def enviar_mensaje(self, id_mensaje, usuario_id=None):
-        contenidos_a_enviar = self.mensajes.findall(f'.//mensaje[@id="{id_mensaje}"]/contenido')
+    def _enviar_mensaje(self, id_mensaje, usuario_id=None):
+        mensaje= self.mensajes.find(f'./contenidos/mensaje[@id_mensaje="{id_mensaje}"]')
+        if "globales_activados" in mensaje.attrib:
+            self.globales_activados = not self.globales_activados
+        contenidos_a_enviar = mensaje.findall('./contenido')
         for contenido in contenidos_a_enviar:
-            print(contenido.text)
+            respuesta= contenido.text
+            self.interfaz.contestar_iu_desarrollo(respuesta)
+            # print(respuesta)
+            self.registrador.info("Se envió un mensaje")
 
+
+
+
+
+#-------------------------------------conexion a interfaz-------------------------------------
+    def _datos_de_mensaje(self, id_mensaje):
+        resultado_xml = self.mensajes.findall(f'.//mensaje[@id_mensaje="{id_mensaje}"]')
+        datos = {}
+
+        for mensaje in resultado_xml:
+            # Iterar sobre los atributos del mensaje y guardarlos en el diccionario
+            for atributo, valor in mensaje.attrib.items():
+                datos[atributo] = valor
+
+            # Obtener los contenidos y guardarlos en una lista bajo la clave "contenidos"
+            contenidos = [contenido.text.strip() for contenido in mensaje.findall(".//contenido")]
+            if contenidos:
+                datos["contenidos"] = contenidos
+
+            # Obtener los disparadores y guardarlos en una lista de diccionarios
+            disparadores = []
+            for disparador in mensaje.findall(".//disparador"):
+                # disparador_dict = {disparador.tag: disparador.attrib}
+                disparador_dict = {}
+                for atributo, valor in disparador.attrib.items():
+                    disparador_dict[atributo]=valor
+                contenido_disparador = disparador.text.strip() if disparador.text else None
+                if contenido_disparador:
+                    disparador_dict["contenido_disparador"] = contenido_disparador
+                disparadores.append(disparador_dict)
+            if disparadores:
+                datos["disparadores"] = disparadores
+
+        return datos
