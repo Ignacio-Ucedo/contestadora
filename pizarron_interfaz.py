@@ -218,7 +218,7 @@ class Pizarron(tk.Canvas):
     #---------------------------------------------------botones barra de herramientas----------------------------------------
 
     def funcion_boton1(self):
-        self.agregar_tarjeta_mensaje(25,25, {'contenidos':['texto'], 'id_mensaje': self.interfaz_padre.bot.cantidad_mensajes})
+        self.agregar_tarjeta_mensaje(50,50, {'contenidos':['texto'], 'id_mensaje': self.interfaz_padre.bot.cantidad_mensajes})
 
     def funcion_boton2(self):
         print("Botón 2 presionado")
@@ -317,6 +317,8 @@ class TarjetaDeMensaje:
         self.ancho_tarjeta = 100 * self.canvas.escala_zoom
         self.alto_tarjeta = 100 * self.canvas.escala_zoom
         self.margen = 10 * self.canvas.escala_zoom
+        x = self.canvas.canvasx(x) 
+        y = self.canvas.canvasy(y)
         self.rect_id = canvas.create_rectangle(x, y, x + self.ancho_tarjeta, y + self.alto_tarjeta, fill="#d9cead", width=0)
 
         # texto:
@@ -411,22 +413,84 @@ class TarjetaDeMensaje:
         self.datos_arrastre["y"] = evento.y
 
     def mostrar_configuracion_mensaje(self, evento):
-        if hasattr(self.canvas, "interfaz_padre"): #si el pizarrón está dentro de la interfaz del bot:
-            datos = self._solicitar_datos_de_mensaje(self.datos_mensaje["id_mensaje"])
-            for clave, valor in datos.items():
-                print(f"{clave}: {valor}")
-            if not self.se_realizo_arrastre:  # Solo muestra el cartel si no se ha realizado un arrastre
-                # Crear el cartel emergente
-                popup = tk.Toplevel()
-                popup.geometry("200x100+{}+{}".format(evento.x_root, evento.y_root))
-                label = tk.Label(popup, text=self.datos_mensaje)
-                label.pack(padx=10, pady=10)
+        if hasattr(self.canvas, "interfaz_padre"):
+            if not self.se_realizo_arrastre:
 
-            # Restablecer la variable para el siguiente evento
+                #creación de los elementos internos
+                def cargar_datos_en_popup():
+                    i=0
+                    for (clave, valor) in self.datos_mensaje.items():
+                        label = tk.Label(popup, text=clave)
+                        label.grid(row=i, column=1, padx=5, pady=5)
+                        button = tk.Button(popup, text="Eliminar", command=lambda clave=clave: eliminar_par(clave))
+                        button.grid(row=i, column=0, padx=5, pady=5)
+
+                        if isinstance(valor, list):  # Si el valor es una lista, expandir cada elemento en entradas individuales
+                            for j, elemento in enumerate(valor):
+                                entry = tk.Entry(popup)
+                                entry.grid(row=i+j, column=2, padx=5, pady=5)
+                                i = i+j
+                                entry.insert(0, str(elemento))  # Insertamos el valor actual en la entrada
+                                entry.bind("<Return>", lambda event, key=(clave, j): guardar_cambios(key)) # Vinculamos la entrada con la función guardar_cambios
+                                entries[(clave, j)] = entry
+                                if j != 0:
+                                    button = tk.Button(popup, text=f"Eliminar valor {j}", command=lambda clave=clave: eliminar_valor(clave, j))
+                                    button.grid(row=i, column=3, padx=5, pady=5)
+                                i +=1
+                                if j+1==len(valor): #si es el último de la lista
+                                    button = tk.Button(popup, text=f"Agregar {clave}", command=lambda clave=clave: agregar_valor(clave))
+                                    button.grid(row=i, column=2, padx=5, pady=5)
+                                    i+=1
+                        else:  # Si no es una lista, solo crear una entrada
+                            entry = tk.Entry(popup)
+                            entry.grid(row=i, column=2, padx=5, pady=5)
+                            entry.insert(0, str(valor))  # Insertamos el valor actual en la entrada
+                            entry.bind("<Return>", lambda event, key=clave: guardar_cambios(key)) # Vinculamos la entrada con la función guardar_cambios
+                            entries[clave] = entry
+                            i+=1
+                popup = tk.Toplevel()
+                popup.title("Configuración de mensaje")
+                popup.geometry("400x300+{}+{}".format(evento.x_root, evento.y_root))
+                entries = {}
+                cargar_datos_en_popup()
+                
+                # Función para eliminar un par clave-valor
+                def eliminar_par(clave):
+                    del self.datos_mensaje[clave]
+                    actualizar_popup()
+
+                #Función para eliminar un valor
+                def eliminar_valor(clave, j=j):  # Capturamos el valor actual de j como argumento predeterminado
+                    del self.datos_mensaje[clave][j]
+                    print(f'se ha eliminado el elemento con índice {j}')
+                    actualizar_popup()
+
+                #Función para agregar un valor
+                def agregar_valor(clave):
+                    self.datos_mensaje[clave].append("")
+                    actualizar_popup()
+
+                # Función para actualizar la ventana emergente después de eliminar un par clave-valor
+                def actualizar_popup():
+                    #vacío el popup
+                    for widget in popup.winfo_children():
+                        widget.destroy()
+                    cargar_datos_en_popup()
+                    
+                # Función para guardar los cambios
+                def guardar_cambios(clave):
+                    if isinstance(clave, tuple):  # Si la clave es una tupla, significa que estamos tratando con un elemento de una lista
+                        lista_clave, indice = clave
+                        self.datos_mensaje[lista_clave][indice] = entries[clave].get()
+                    else:
+                        self.datos_mensaje[clave] = entries[clave].get()  # Actualizamos el valor en el diccionario
+                    popup.destroy()  # Cerramos el cuadro emergente
+
             self.se_realizo_arrastre = False
             
     def _solicitar_datos_de_mensaje(self, id_mensaje):
         return self.canvas._solicitar_datos_de_mensaje(id_mensaje)
+
     def eliminar_tarjeta(self):
         self.canvas.delete(self.rect_id)
         self.canvas.delete(self.text_id)

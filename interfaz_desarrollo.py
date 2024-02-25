@@ -110,10 +110,12 @@ class InterfazDesarrollo:
 
     def cargar_mensajes_en_pizarron(self):
         cantidad_mensajes = self.bot.cantidad_mensajes
+        #agregación de tarjetas
         for id_mensaje in range(cantidad_mensajes):
             datos_mensaje = self._solicitar_datos_de_mensaje(id_mensaje)
             self.pizarron.agregar_tarjeta_mensaje(25,25,datos_mensaje)
 
+        #conexión de flechas
         for id_mensaje in range(cantidad_mensajes):
             datos_mensaje = self._solicitar_datos_de_mensaje(id_mensaje)
             if 'hijos' in datos_mensaje:
@@ -130,11 +132,3 @@ class InterfazDesarrollo:
         interfaz.cargar_mensajes_en_pizarron()
         raiz.mainloop()
 
-
-    # def ejecutar(self):
-    #     raiz = tk.Tk()
-    #     raiz.configure(bg="#333333")  
-    #     interfaz = self(raiz)
-    #     raiz.mainloop()
-
-    #     return interfaz
