@@ -3,21 +3,23 @@
         <mensaje id_mensaje="0">
             <contenido>hola &#128522;</contenido>
         </mensaje>
-        <mensaje id_mensaje="1" hijos="[2, 3, 4]" >
-            <contenido tipo="listado">Este es un men&#250; {self.traer_tabla(2)} 
+        <mensaje id_mensaje="1" hijos="[2, 3, 4]">
+            <contenido tipo="interactivo">Este es un men&#250; {imprimir_hijos} 
             </contenido>
         </mensaje>
-        <mensaje id_mensaje="2" >
-            <contenido tipo = "concatendado" >hijo 1 {}</contenido>
-            <contenido tipo = "concatendado" >hijo 1 {}</contenido>
+        <mensaje id_mensaje="2" titulo="lista de precios">
+            <contenido>hijo 1</contenido>
         </mensaje>
-        <mensaje id_mensaje="3" globales_activados="False" hijos="[4]">
+        <mensaje id_mensaje="3" globales_activados="False" titulo="Zona de envios">
             <contenido>hijo 2</contenido>
         </mensaje>
-        <mensaje id_mensaje="4" globales_activados="True">
+        <mensaje id_mensaje="4" globales_activados="True" titulo="reclamos">
             <contenido>mensasjeeeee id 4 </contenido>
         </mensaje>
-   </contenidos>
+        <mensaje id_mensaje="5" globales_activados="True">
+            <contenido>excepcion </contenido>
+        </mensaje>
+   <mensaje id_mensaje="6" /></contenidos>
     <disparadores>
         <mensaje id_mensaje="0">
             <disparador tipo="saludo" />
@@ -33,7 +35,7 @@
             <disparador tipo="texto" entorno="local" condicion="exacto">2</disparador>
         </mensaje>
         <mensaje id_mensaje="4">
-            <disparador tipo="texto" entorno="local" condicion="contiene">1</disparador>
+            <disparador tipo="texto" entorno="local" condicion="contiene">3</disparador>
         </mensaje>
     </disparadores>
 </raiz>

@@ -460,7 +460,7 @@ class TarjetaDeMensaje:
                     actualizar_popup()
 
                 #Función para eliminar un valor
-                def eliminar_valor(clave, j=j):  # Capturamos el valor actual de j como argumento predeterminado
+                def eliminar_valor(clave, j):  # Capturamos el valor actual de j como argumento predeterminado
                     del self.datos_mensaje[clave][j]
                     print(f'se ha eliminado el elemento con índice {j}')
                     actualizar_popup()

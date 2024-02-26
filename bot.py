@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 import os
 import json
 import logging
+import re
 
 class Bot: 
 
@@ -185,12 +186,10 @@ class Bot:
 
     def contestar(self, mensaje, usuario_id):
         
-        mensaje_enviado=False
         #se envía saludo si tiene
         if usuario_id not in self.interacciones:        
             if self.saludo_id:
                 self._enviar_mensaje(self.saludo_id, usuario_id)
-                self.interacciones[usuario_id] = self.saludo_id
                 self.contestar(mensaje, usuario_id)
                 return
         #tiene globales 
@@ -207,60 +206,99 @@ class Bot:
                     if condicion == "contiene":
                         if disparador_texto.lower() in mensaje.lower():
                             self._enviar_mensaje(id_mensaje)                                          
-                            print(mensaje_con_global.attrib)
-                            if "globales_activados" in mensaje_con_global.attrib:
-                                self.globales_activados = not self.globales_activados
-                            self.interacciones[usuario_id] = id_mensaje
-                            mensaje_enviado = True
                             return
                     else:
                         if mensaje == disparador_texto:
                             self._enviar_mensaje(id_mensaje)
-
-                            self.interacciones[usuario_id] = id_mensaje
-                            mensaje_enviado = True
                             return
        
         #si no tiene globales o están desactivados o no encontró mensaje para enviar
-        if not mensaje_enviado:
             #si es su primer mensaje (sin contar el saludo)
-            if  (hasattr(self, "saludo_id") and self.saludo_id == self.interacciones[usuario_id]) or (usuario_id not in self.interacciones):
-                self.interacciones[usuario_id] = self.mensaje_principal_id
-                self._enviar_mensaje(self.mensaje_principal_id, usuario_id)
-                if "globales_activados" in mensaje_con_global.attrib:
-                    self.globales_activados = not self.globales_activados
-                return
+        if  (hasattr(self, "saludo_id") and self.saludo_id == self.interacciones[usuario_id]) or (usuario_id not in self.interacciones):
+            self._enviar_mensaje(self.mensaje_principal_id, usuario_id)
+            return
 
-            ultimo_mensaje_id= self.interacciones[usuario_id]
-            id_hijos = self.mensajes.find(f'.//contenidos/mensaje[@id_mensaje="{ultimo_mensaje_id}"]').get("hijos")
-            if id_hijos != None:
-                id_hijos = json.loads(id_hijos)
+        ultimo_mensaje_id = self.interacciones[usuario_id]
+        nodo_ultimo_mensaje = self.mensajes.find(f'.//contenidos/mensaje[@id_mensaje="{ultimo_mensaje_id}"]')
+        id_hijos = nodo_ultimo_mensaje.get("hijos")
+        if id_hijos != None:
+            id_hijos = json.loads(id_hijos)
 
-                for id_hijo in id_hijos:
-                    disparador = self.mensajes.find(f'.//mensaje[@id_mensaje="{id_hijo}"]/disparador[@entorno="local"]')
-                    if disparador != None:
-                        disparador = disparador.text
-                        if disparador == mensaje:
-                            self.interacciones[usuario_id] = id_hijo 
-                            self._enviar_mensaje(id_hijo, usuario_id)
-  
-                            break
-            else:
-                "chequear excepción?"
-                self.interacciones[usuario_id]
+            for id_hijo in id_hijos:
+                disparadores_hijo = self.mensajes.findall(f'.//mensaje[@id_mensaje="{id_hijo}"]/disparador[@entorno="local"]')
+                for disparador in disparadores_hijo:
+                    condicion = disparador.get("condicion")
+                    disparador_texto= disparador.text
+
+                    if condicion == "contiene":
+                        if disparador_texto.lower() in mensaje.lower():
+                            self._enviar_mensaje(id_hijo)                                          
+                            return
+                    else:
+                        if mensaje == disparador_texto:
+                            self._enviar_mensaje(id_hijo)
+                            return
+        if  "excepcion" in nodo_ultimo_mensaje.attrib:
+           id_excepcion = nodo_ultimo_mensaje.get("excepcion")
+           self._enviar_mensaje(id_excepcion)
+    
+    def _procesar_interactivo(self, mensaje, contenido):
+         patron = r"{([^\{\}]+)}"
+         resultados = re.findall(patron, contenido.text)
+         print(resultados)
+         for funcion in resultados:
+             resultado_funcion = getattr(self, funcion)(mensaje)
+             if isinstance(resultado_funcion, list):
+                 string_lista = ""
+                 n = 1
+                 for resultado in resultado_funcion:
+                     if resultado != None:
+                      string_lista += "\n"
+                      string_lista += str(n) + "-" + resultado
+                      n += 1
+                      
+
+                 texto = contenido.text
+                 funcion = "{" + funcion + "}"
+                 nuevo_texto = texto.replace(funcion, string_lista)
+
+         return nuevo_texto
+
+    def imprimir_hijos(self, mensaje):
+             titulos = []
+             hijos = mensaje.get("hijos")
+             hijos_lista = json.loads(hijos)
+             for hijo in hijos_lista:
+                nodo_hijo = self.mensajes.find(f'.//contenidos/mensaje[@id_mensaje="{hijo}"]')
+                titulo_hijo = nodo_hijo.get("titulo")
+                titulos.append(titulo_hijo)
+             return titulos
+
+
+                 
+             
+             
+
+
+        
+
 
     def _enviar_mensaje(self, id_mensaje, usuario_id=None):
         mensaje= self.mensajes.find(f'./contenidos/mensaje[@id_mensaje="{id_mensaje}"]')
-        if "globales_activados" in mensaje.attrib:
-            self.globales_activados = not self.globales_activados
-        contenidos_a_enviar = mensaje.findall('./contenido')
-        for contenido in contenidos_a_enviar:
-            respuesta= contenido.text
-            self.interfaz.contestar_iu_desarrollo(respuesta)
-            # print(respuesta)
-            self.registrador.info("Se envió un mensaje")
+        if mensaje != None:
+            if "globales_activados" in mensaje.attrib:
+                self.globales_activados = not self.globales_activados
+            contenidos_a_enviar = mensaje.findall('./contenido')
+            for contenido in contenidos_a_enviar:
+                respuesta= contenido.text
+                if "tipo" in contenido.attrib and contenido.attrib["tipo"] == "interactivo":
+                    respuesta = self._procesar_interactivo(mensaje, contenido)
+                    
+                self.interfaz.contestar_iu_desarrollo(respuesta)
+                self.registrador.info("Se envió un mensaje")
+            self.interacciones[usuario_id] = id_mensaje
 
-
+   
 
 
 
