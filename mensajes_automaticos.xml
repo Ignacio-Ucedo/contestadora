@@ -4,7 +4,7 @@
             <contenido>hola &#128522;</contenido>
         </mensaje>
         <mensaje id_mensaje="1" hijos="[2, 3, 4]">
-            <contenido tipo="interactivo">Este es un men&#250; {imprimir_hijos} 
+            <contenido tipo="interactivo">Este es un men&#250; {generar_menu}
             </contenido>
         </mensaje>
         <mensaje id_mensaje="2" titulo="lista de precios">
@@ -18,8 +18,7 @@
         </mensaje>
         <mensaje id_mensaje="5" globales_activados="True">
             <contenido>excepcion </contenido>
-        </mensaje>
-   <mensaje id_mensaje="6" /></contenidos>
+        </mensaje></contenidos>
     <disparadores>
         <mensaje id_mensaje="0">
             <disparador tipo="saludo" />
@@ -28,14 +27,11 @@
             <disparador tipo="mensaje_principal" />
         </mensaje>
         <mensaje id_mensaje="2">
-            <disparador tipo="texto" entorno="local" condicion="exacto">1</disparador>
         </mensaje>
         <mensaje id_mensaje="3">
             <disparador tipo="texto" entorno="global" condicion="contiene">oferta</disparador>
-            <disparador tipo="texto" entorno="local" condicion="exacto">2</disparador>
         </mensaje>
         <mensaje id_mensaje="4">
-            <disparador tipo="texto" entorno="local" condicion="contiene">3</disparador>
         </mensaje>
-    </disparadores>
+    <mensaje id_mensaje="1"><disparador tipo="texto" entorno="local" condicion="exacto">1</disparador></mensaje><mensaje id_mensaje="1"><disparador tipo="texto" entorno="local" condicion="exacto">1</disparador></mensaje><mensaje id_mensaje="1"><disparador tipo="texto" entorno="local" condicion="exacto">1</disparador></mensaje></disparadores>
 </raiz>

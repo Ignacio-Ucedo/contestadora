@@ -61,9 +61,7 @@ class Bot:
             raiz = ET.Element("raiz")
             ET.SubElement(raiz, "contenidos")
             ET.SubElement(raiz, "disparadores")
-            ET.ElementTree(raiz).write(self.ruta_mensajes)
-            self.registrador.info(f"Se ha creado el archivo {self.ruta_mensajes}")
-        
+            ET.ElementTree(raiz).write(self.ruta_mensajes)        
         self.mensajes = ET.parse(self.ruta_mensajes).getroot()
         
     def _cargar_interacciones(self):
@@ -83,6 +81,15 @@ class Bot:
         """
         Configura el bot utilizando la información cargada desde los archivos XML y JSON.
         """
+        #procesar mensajes
+        mensajes_interactivos = self.mensajes.findall('.//contenido[@tipo="interactivo"]/..')
+        for mensaje in mensajes_interactivos:
+            contenidos = mensaje.findall("./contenido")
+            for contenido in contenidos:
+                self._procesar_interactivo(mensaje, contenido)
+        xml_string = ET.tostring(self.mensajes, encoding='utf-8').decode('utf-8')
+
+        
         #cantidad de mensajes
         resultados = self.mensajes.findall(".//contenidos/mensaje")
         self.cantidad_mensajes = len(resultados)
@@ -124,7 +131,7 @@ class Bot:
 #-------------------------------------------públicos-------------------------------------------------
 
 
-    def agregar_o_modificar_mensaje(self, id=None, contenido = None, titulo=None, lista_siguientes=None):
+    def agregar_o_modificar_mensaje(self, id=None, contenido = None, titulo=None, lista_hijos=None):
         """
         Agrega o modifica un mensaje del bot.
 
@@ -133,7 +140,7 @@ class Bot:
         contenido o definir la lista de siguientes a un mensaje EXISTENTE.
         - contenido (str, opcional): Contenido del mensaje.    
         - titulo: 
-        - lista_siguientes (list[int], opcional): Lista de identificadores de mensajes siguientes.
+        - lista_hijos (list[int], opcional): Lista de identificadores de mensajes siguientes.
 
         """
         if id == None or id == self.cantidad_mensajes:
@@ -151,13 +158,12 @@ class Bot:
             nodo_contenido.text = contenido
             mensaje.set("titulo", titulo)
 
-        if lista_siguientes != None:
-            mensaje.set("siguientes", str(lista_siguientes))
-            for id_siguiente in lista_siguientes:
+        if lista_hijos != None:
+            mensaje.set("hijos", str(lista_hijos))
+            for id_siguiente in lista_hijos:
                 self.agregar_o_modificar_mensaje(id_siguiente)
 
         self._guardar_mensajes()
-
 
     def agregar_disparador(self, id_mensaje, tipo, entorno=None, condicion=None, contenido=None):
         nodo_mensaje = self.mensajes.find(f'.//disparadores/mensaje[@id="{id_mensaje}"]')
@@ -205,11 +211,11 @@ class Bot:
 
                     if condicion == "contiene":
                         if disparador_texto.lower() in mensaje.lower():
-                            self._enviar_mensaje(id_mensaje)                                          
+                            self._enviar_mensaje(id_mensaje, usuario_id)                                          
                             return
                     else:
                         if mensaje == disparador_texto:
-                            self._enviar_mensaje(id_mensaje)
+                            self._enviar_mensaje(id_mensaje, usuario_id)
                             return
        
         #si no tiene globales o están desactivados o no encontró mensaje para enviar
@@ -217,7 +223,7 @@ class Bot:
         if  (hasattr(self, "saludo_id") and self.saludo_id == self.interacciones[usuario_id]) or (usuario_id not in self.interacciones):
             self._enviar_mensaje(self.mensaje_principal_id, usuario_id)
             return
-
+        
         ultimo_mensaje_id = self.interacciones[usuario_id]
         nodo_ultimo_mensaje = self.mensajes.find(f'.//contenidos/mensaje[@id_mensaje="{ultimo_mensaje_id}"]')
         id_hijos = nodo_ultimo_mensaje.get("hijos")
@@ -232,20 +238,19 @@ class Bot:
 
                     if condicion == "contiene":
                         if disparador_texto.lower() in mensaje.lower():
-                            self._enviar_mensaje(id_hijo)                                          
+                            self._enviar_mensaje(id_hijo, usuario_id)                                          
                             return
                     else:
                         if mensaje == disparador_texto:
-                            self._enviar_mensaje(id_hijo)
+                            self._enviar_mensaje(id_hijo, usuario_id)
                             return
         if  "excepcion" in nodo_ultimo_mensaje.attrib:
            id_excepcion = nodo_ultimo_mensaje.get("excepcion")
-           self._enviar_mensaje(id_excepcion)
+           self._enviar_mensaje(id_excepcion, usuario_id)
     
     def _procesar_interactivo(self, mensaje, contenido):
          patron = r"{([^\{\}]+)}"
          resultados = re.findall(patron, contenido.text)
-         print(resultados)
          for funcion in resultados:
              resultado_funcion = getattr(self, funcion)(mensaje)
              if isinstance(resultado_funcion, list):
@@ -256,31 +261,27 @@ class Bot:
                       string_lista += "\n"
                       string_lista += str(n) + "-" + resultado
                       n += 1
-                      
-
                  texto = contenido.text
                  funcion = "{" + funcion + "}"
                  nuevo_texto = texto.replace(funcion, string_lista)
+                 contenido.text = nuevo_texto
 
-         return nuevo_texto
 
-    def imprimir_hijos(self, mensaje):
+    def generar_menu(self, mensaje):
              titulos = []
+             id_mensaje = mensaje.get("id_mensaje")
              hijos = mensaje.get("hijos")
              hijos_lista = json.loads(hijos)
+             n = 1
              for hijo in hijos_lista:
+                self.agregar_disparador(id_mensaje, tipo="texto", entorno="local", condicion="exacto", contenido=str(n))
                 nodo_hijo = self.mensajes.find(f'.//contenidos/mensaje[@id_mensaje="{hijo}"]')
                 titulo_hijo = nodo_hijo.get("titulo")
-                titulos.append(titulo_hijo)
+                titulos.append(titulo_hijo) 
+              
              return titulos
 
 
-                 
-             
-             
-
-
-        
 
 
     def _enviar_mensaje(self, id_mensaje, usuario_id=None):
@@ -291,9 +292,6 @@ class Bot:
             contenidos_a_enviar = mensaje.findall('./contenido')
             for contenido in contenidos_a_enviar:
                 respuesta= contenido.text
-                if "tipo" in contenido.attrib and contenido.attrib["tipo"] == "interactivo":
-                    respuesta = self._procesar_interactivo(mensaje, contenido)
-                    
                 self.interfaz.contestar_iu_desarrollo(respuesta)
                 self.registrador.info("Se envió un mensaje")
             self.interacciones[usuario_id] = id_mensaje

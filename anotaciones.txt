@@ -1,2 +1,3 @@
 Navegacion dudosamente terminada
 Como traer informacion al mensaje (como armar el menu con los hijos)
+Estamos generando los disparados de los menu ( generar_menu) ( no funciona)
