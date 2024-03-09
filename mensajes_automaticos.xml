@@ -14,11 +14,12 @@
             <contenido>hijo 2</contenido>
         </mensaje>
         <mensaje id_mensaje="4" globales_activados="True" titulo="reclamos">
-            <contenido>mensasjeeeee id 4 </contenido>
+            <contenido>mensasjeeeee hijo 3 </contenido>
         </mensaje>
         <mensaje id_mensaje="5" globales_activados="True">
             <contenido>excepcion </contenido>
-        </mensaje></contenidos>
+        </mensaje>
+    </contenidos>
     <disparadores>
         <mensaje id_mensaje="0">
             <disparador tipo="saludo" />
@@ -26,12 +27,8 @@
         <mensaje id_mensaje="1">
             <disparador tipo="mensaje_principal" />
         </mensaje>
-        <mensaje id_mensaje="2">
-        </mensaje>
         <mensaje id_mensaje="3">
             <disparador tipo="texto" entorno="global" condicion="contiene">oferta</disparador>
         </mensaje>
-        <mensaje id_mensaje="4">
-        </mensaje>
-    <mensaje id_mensaje="1"><disparador tipo="texto" entorno="local" condicion="exacto">1</disparador></mensaje><mensaje id_mensaje="1"><disparador tipo="texto" entorno="local" condicion="exacto">1</disparador></mensaje><mensaje id_mensaje="1"><disparador tipo="texto" entorno="local" condicion="exacto">1</disparador></mensaje></disparadores>
+    </disparadores>
 </raiz>

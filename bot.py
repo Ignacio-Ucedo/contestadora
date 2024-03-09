@@ -87,8 +87,6 @@ class Bot:
             contenidos = mensaje.findall("./contenido")
             for contenido in contenidos:
                 self._procesar_interactivo(mensaje, contenido)
-        xml_string = ET.tostring(self.mensajes, encoding='utf-8').decode('utf-8')
-
         
         #cantidad de mensajes
         resultados = self.mensajes.findall(".//contenidos/mensaje")
@@ -121,6 +119,12 @@ class Bot:
         """
         Carga en el archivo JSON las interacciones del bot.
         """
+
+        # with open(self.ruta_interacciones, "r") as archivo:
+        #     data = json.load(archivo)
+
+        # data.update(self.interacciones)
+
         with open(self.ruta_interacciones, "w") as archivo:
             json.dump(self.interacciones, archivo)
 
@@ -165,8 +169,8 @@ class Bot:
 
         self._guardar_mensajes()
 
-    def agregar_disparador(self, id_mensaje, tipo, entorno=None, condicion=None, contenido=None):
-        nodo_mensaje = self.mensajes.find(f'.//disparadores/mensaje[@id="{id_mensaje}"]')
+    def agregar_disparador(self, id_mensaje, tipo, entorno=None, condicion=None, contenido=None , modifica_archivo=True):
+        nodo_mensaje = self.mensajes.find(f'.//disparadores/mensaje[@id_mensaje="{id_mensaje}"]')
 
         if nodo_mensaje is None:
             nodo_mensaje = ET.SubElement(self.mensajes.find("disparadores"), "mensaje")
@@ -183,23 +187,26 @@ class Bot:
         if tipo == "texto":
             nodo_disparador.text = contenido
 
-        self._guardar_mensajes()
+        if modifica_archivo:
+            self._guardar_mensajes()
 
-    def modificar_interaccion(self, usuario_id, ultimo_mensaje_id):
-        interaccion = self.interacciones.setdefault(usuario_id, {})
-        interaccion["ultimo_mensaje_id"] = ultimo_mensaje_id
+    def modificar_interaccion(self, usuario_id, ultimo_mensaje_id=None, globales_activados=None):
+        interaccion = self.interacciones.setdefault((str(usuario_id)), {})
+        if ultimo_mensaje_id != None:
+            interaccion.setdefault('ultimo_mensaje_id', ultimo_mensaje_id )
+        if globales_activados != None:
+            interaccion.setdefault('globales_activados', globales_activados )
         self._actualizar_archivo_interacciones()
 
     def contestar(self, mensaje, usuario_id):
-        
-        #se envía saludo si tiene
+        # print(self.interacciones[usuario_id])
         if usuario_id not in self.interacciones:        
             if self.saludo_id:
-                self._enviar_mensaje(self.saludo_id, usuario_id)
+                self._enviar_mensaje(self.saludo_id, usuario_id, True)
                 self.contestar(mensaje, usuario_id)
                 return
         #tiene globales 
-        elif hasattr(self, 'mensajes_con_global') and self.globales_activados:
+        elif hasattr(self, 'mensajes_con_global') and self.interacciones[usuario_id]['globales_activados']:
             for mensaje_con_global in self.mensajes_con_global:
                 disparadores_globales_del_mensaje = mensaje_con_global.findall('./disparador[@entorno="global"]')
                 for disparador in disparadores_globales_del_mensaje:
@@ -224,7 +231,7 @@ class Bot:
             self._enviar_mensaje(self.mensaje_principal_id, usuario_id)
             return
         
-        ultimo_mensaje_id = self.interacciones[usuario_id]
+        ultimo_mensaje_id = self.interacciones[usuario_id]['ultimo_mensaje_id']
         nodo_ultimo_mensaje = self.mensajes.find(f'.//contenidos/mensaje[@id_mensaje="{ultimo_mensaje_id}"]')
         id_hijos = nodo_ultimo_mensaje.get("hijos")
         if id_hijos != None:
@@ -269,36 +276,44 @@ class Bot:
 
     def generar_menu(self, mensaje):
              titulos = []
-             id_mensaje = mensaje.get("id_mensaje")
+            #  id_mensaje = mensaje.get("id_mensaje")
              hijos = mensaje.get("hijos")
              hijos_lista = json.loads(hijos)
              n = 1
              for hijo in hijos_lista:
-                self.agregar_disparador(id_mensaje, tipo="texto", entorno="local", condicion="exacto", contenido=str(n))
+                self.agregar_disparador(hijo, tipo="texto", entorno="local", condicion="exacto", contenido=str(n), modifica_archivo=False)
                 nodo_hijo = self.mensajes.find(f'.//contenidos/mensaje[@id_mensaje="{hijo}"]')
                 titulo_hijo = nodo_hijo.get("titulo")
                 titulos.append(titulo_hijo) 
+                n+=1
               
              return titulos
 
 
 
 
-    def _enviar_mensaje(self, id_mensaje, usuario_id=None):
-        mensaje= self.mensajes.find(f'./contenidos/mensaje[@id_mensaje="{id_mensaje}"]')
+    def _enviar_mensaje(self, id_mensaje_enviar, usuario_id=None, activa_globales=None):
+        mensaje= self.mensajes.find(f'./contenidos/mensaje[@id_mensaje="{id_mensaje_enviar}"]')
         if mensaje != None:
             if "globales_activados" in mensaje.attrib:
-                self.globales_activados = not self.globales_activados
+                interaccion = self.interacciones[usuario_id]
+                interaccion['globales_activados'] = not interaccion['globales_activados']
             contenidos_a_enviar = mensaje.findall('./contenido')
             for contenido in contenidos_a_enviar:
                 respuesta= contenido.text
                 self.interfaz.contestar_iu_desarrollo(respuesta)
                 self.registrador.info("Se envió un mensaje")
-            self.interacciones[usuario_id] = id_mensaje
+            
+            self.modificar_interaccion(usuario_id, id_mensaje_enviar, activa_globales)
 
    
 
-
+    def reiniciar_conversacion(self, usuario_id):
+        if usuario_id in self.interacciones:
+            # interacciones = self.interacciones
+            # print(f"id ultimo mensaje {(interacciones['0'])}")
+            del self.interacciones[usuario_id]  
+            # print(f"claves {str(self.interacciones.keys())}")
 
 #-------------------------------------conexion a interfaz-------------------------------------
     def _datos_de_mensaje(self, id_mensaje):

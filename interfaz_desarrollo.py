@@ -33,7 +33,7 @@ class InterfazDesarrollo:
         self.lbl_titulo_chat = tk.Label(self.frame_chat, text="Chat", font=("Helvetica", 18, "bold"), fg="white", bg="#333333")
         self.lbl_titulo_chat.pack(side=tk.TOP, pady=20)
 
-        self.btn_agregar_o_modificar_mensajes = tk.Button(self.frame_chat, text="Agregar o modificar mensaje", font=("Helvetica", 12), command=self.agregar_o_modificar_mensaje_desde_interfaz, bg="#666666", fg="white")
+        self.btn_agregar_o_modificar_mensajes = tk.Button(self.frame_chat, text="Reiniciar conversación", font=("Helvetica", 12), command=self.reiniciar_conversacion , bg="#666666", fg="white")
 
         self.btn_agregar_o_modificar_mensajes.pack(pady=10)
 
@@ -74,6 +74,14 @@ class InterfazDesarrollo:
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar mensajes: {str(e)}")
 
+
+    def reiniciar_conversacion(self):
+        self.vaciar_chat()
+        self.bot.reiniciar_conversacion(0)
+
+    def vaciar_chat(self):
+        self.chat_texto.delete(0, tk.END) 
+
     def contestar_iu_desarrollo(self, mensaje):
         timestamp = time.strftime("%H:%M:%S", time.localtime())  
         etiqueta = f"bot {timestamp}: "  
@@ -97,7 +105,7 @@ class InterfazDesarrollo:
             self.chat_texto.insert("end",texto_ingresado+ '\n')   
             self.chat_texto.configure(state="disabled")
             self.chat_texto.see("end")  # Ajustar para mostrar el final del texto
-            self.bot.contestar(texto_ingresado, 0)
+            self.bot.contestar(texto_ingresado, "0")
             self.entrada_texto.delete("1.0", "end")  
             self.entrada_texto.event_generate("<BackSpace>")  
     
