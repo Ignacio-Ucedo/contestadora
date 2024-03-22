@@ -23,15 +23,17 @@ class Bot:
         """
         self.registrador = logging.getLogger(__name__)
         logging.basicConfig(level=logging.INFO ,format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+        directorio_actual = os.getcwd()
+        print(directorio_actual)
 
         if ruta_mensajes == None:
-            ruta_por_defecto_mensajes = "mensajes_automaticos.xml"
+            ruta_por_defecto_mensajes = "scripts/recursos_bot/mensajes_automaticos.xml"
             self.ruta_mensajes = ruta_por_defecto_mensajes
         else:
             self.ruta_mensajes = ruta_mensajes
 
         if ruta_interacciones == None:
-            ruta_por_defecto_interacciones = "interacciones.json"
+            ruta_por_defecto_interacciones = "scripts/recursos_bot/interacciones.json"
             self.ruta_interacciones = ruta_por_defecto_interacciones
         else:
             self.ruta_interacciones = ruta_interacciones
@@ -135,7 +137,7 @@ class Bot:
 #-------------------------------------------públicos-------------------------------------------------
 
 
-    def agregar_o_modificar_mensaje(self, id=None, contenido = None, titulo=None, lista_hijos=None):
+    def agregar_o_modificar_mensaje(self, id:str=None, contenido:str = None, titulo:str=None, lista_hijos:list[str]=None):
         """
         Agrega o modifica un mensaje del bot.
 
@@ -169,7 +171,7 @@ class Bot:
 
         self._guardar_mensajes()
 
-    def agregar_disparador(self, id_mensaje, tipo, entorno=None, condicion=None, contenido=None , modifica_archivo=True):
+    def agregar_disparador(self, id_mensaje:str, tipo:str, entorno:str=None, condicion:str=None, contenido:str=None , modifica_archivo:str=True):
         nodo_mensaje = self.mensajes.find(f'.//disparadores/mensaje[@id_mensaje="{id_mensaje}"]')
 
         if nodo_mensaje is None:
@@ -190,16 +192,25 @@ class Bot:
         if modifica_archivo:
             self._guardar_mensajes()
 
-    def modificar_interaccion(self, usuario_id, ultimo_mensaje_id=None, globales_activados=None):
-        interaccion = self.interacciones.setdefault((str(usuario_id)), {})
+    def modificar_interaccion(self, usuario_id:str, ultimo_mensaje_id:str=None, globales_activados:str=None):
+        interaccion = self.interacciones.setdefault((usuario_id), {})
         if ultimo_mensaje_id != None:
-            interaccion.setdefault('ultimo_mensaje_id', ultimo_mensaje_id )
+            # interaccion.setdefault('ultimo_mensaje_id', ultimo_mensaje_id )
+            interaccion['ultimo_mensaje_id'] = str(ultimo_mensaje_id)
         if globales_activados != None:
-            interaccion.setdefault('globales_activados', globales_activados )
+            # interaccion.setdefault('globales_activados', globales_activados )
+            interaccion['globales_activados'] = globales_activados
         self._actualizar_archivo_interacciones()
 
-    def contestar(self, mensaje, usuario_id):
-        # print(self.interacciones[usuario_id])
+    def manejar_mensaje_recibido(self, mensaje:str, usuario_id:str):
+        # ultimo_mensaje_id = self.interacciones[usuario_id]['ultimo_mensaje_id']
+        # if ultimo_mensaje_id in self.mensajes_con_modificador:
+        #     #depende el modificador
+
+        self.contestar(mensaje, usuario_id)
+
+
+    def contestar(self, mensaje:str, usuario_id:str):
         if usuario_id not in self.interacciones:        
             if self.saludo_id:
                 self._enviar_mensaje(self.saludo_id, usuario_id, True)
@@ -227,7 +238,7 @@ class Bot:
        
         #si no tiene globales o están desactivados o no encontró mensaje para enviar
             #si es su primer mensaje (sin contar el saludo)
-        if  (hasattr(self, "saludo_id") and self.saludo_id == self.interacciones[usuario_id]) or (usuario_id not in self.interacciones):
+        if  (hasattr(self, "saludo_id") and self.saludo_id == self.interacciones[usuario_id]['ultimo_mensaje_id']) or (usuario_id not in self.interacciones):
             self._enviar_mensaje(self.mensaje_principal_id, usuario_id)
             return
         
@@ -255,7 +266,7 @@ class Bot:
            id_excepcion = nodo_ultimo_mensaje.get("excepcion")
            self._enviar_mensaje(id_excepcion, usuario_id)
     
-    def _procesar_interactivo(self, mensaje, contenido):
+    def _procesar_interactivo(self, mensaje:str, contenido:str):
          patron = r"{([^\{\}]+)}"
          resultados = re.findall(patron, contenido.text)
          for funcion in resultados:
@@ -274,7 +285,7 @@ class Bot:
                  contenido.text = nuevo_texto
 
 
-    def generar_menu(self, mensaje):
+    def generar_menu(self, mensaje:str):
              titulos = []
             #  id_mensaje = mensaje.get("id_mensaje")
              hijos = mensaje.get("hijos")
@@ -289,10 +300,7 @@ class Bot:
               
              return titulos
 
-
-
-
-    def _enviar_mensaje(self, id_mensaje_enviar, usuario_id=None, activa_globales=None):
+    def _enviar_mensaje(self, id_mensaje_enviar:str, usuario_id:str=None, activa_globales:bool=None):
         mensaje= self.mensajes.find(f'./contenidos/mensaje[@id_mensaje="{id_mensaje_enviar}"]')
         if mensaje != None:
             if "globales_activados" in mensaje.attrib:
@@ -306,17 +314,15 @@ class Bot:
             
             self.modificar_interaccion(usuario_id, id_mensaje_enviar, activa_globales)
 
-   
 
-    def reiniciar_conversacion(self, usuario_id):
+    def reiniciar_conversacion(self, usuario_id:str):
         if usuario_id in self.interacciones:
-            # interacciones = self.interacciones
-            # print(f"id ultimo mensaje {(interacciones['0'])}")
             del self.interacciones[usuario_id]  
-            # print(f"claves {str(self.interacciones.keys())}")
+            self._actualizar_archivo_interacciones()
+        
 
 #-------------------------------------conexion a interfaz-------------------------------------
-    def _datos_de_mensaje(self, id_mensaje):
+    def _datos_de_mensaje(self, id_mensaje:str):
         resultado_xml = self.mensajes.findall(f'.//mensaje[@id_mensaje="{id_mensaje}"]')
         datos = {}
 

@@ -1,0 +1,2 @@
+estamos con los csv y los modificadores. Queremos hacer la estructura del monitor de tablaestamos con los csv y los modificadores. Queremos hacer la estructura del monitor de tablas.
+En el bot estamos en manejar mensaje recibido

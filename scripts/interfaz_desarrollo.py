@@ -77,10 +77,12 @@ class InterfazDesarrollo:
 
     def reiniciar_conversacion(self):
         self.vaciar_chat()
-        self.bot.reiniciar_conversacion(0)
+        self.bot.reiniciar_conversacion("0")
 
     def vaciar_chat(self):
-        self.chat_texto.delete(0, tk.END) 
+        self.chat_texto.configure(state="normal")
+        self.chat_texto.delete("1.0", tk.END) 
+        self.chat_texto.configure(state="disabled")
 
     def contestar_iu_desarrollo(self, mensaje):
         timestamp = time.strftime("%H:%M:%S", time.localtime())  
@@ -105,7 +107,8 @@ class InterfazDesarrollo:
             self.chat_texto.insert("end",texto_ingresado+ '\n')   
             self.chat_texto.configure(state="disabled")
             self.chat_texto.see("end")  # Ajustar para mostrar el final del texto
-            self.bot.contestar(texto_ingresado, "0")
+            # self.bot.contestar(texto_ingresado, "0")
+            self.bot.manejar_mensaje_recibido(texto_ingresado, "0")
             self.entrada_texto.delete("1.0", "end")  
             self.entrada_texto.event_generate("<BackSpace>")  
     
@@ -113,7 +116,7 @@ class InterfazDesarrollo:
         self.master.destroy()
 
 #------------------------------------------------de conexión al bot------------------------
-    def _solicitar_datos_de_mensaje(self, id_mensaje):
+    def _solicitar_datos_de_mensaje(self, id_mensaje:str):
         return self.bot._datos_de_mensaje(id_mensaje)
 
     def cargar_mensajes_en_pizarron(self):

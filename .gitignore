@@ -4,5 +4,7 @@ ToDo
 *.jpg
 *.json
 *.md
+*.csv
+*.xml
 interfaz.py
 prueba.py
